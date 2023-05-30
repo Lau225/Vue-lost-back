@@ -334,20 +334,11 @@ tokenRouter.post("/sendClaim", async (ctx, next) => {
 //获取认领信息
 tokenRouter.post("/getClaim", async (ctx, next) => {
   let stuN=ctx.request.body.stuN
-  let thingList=[]
   let sql = `select * from claimthings where claimerNumber='${stuN}'`
   const result = await tools.packet(sql);
-  let list = result
-  console.log(list);
-  for (const key in list) {
-    let thingName=list[key].thingName
-    let sql1=`select * from lostthings where name='${thingName}'`
-    const result1 = await tools.packet(sql1);
-    thingList.push(result1[0])
-    thingList[key].status = result[key].status;
-  }
+  
   ctx.body={
-    thingList
+    result
   }
 })
 
@@ -495,6 +486,35 @@ tokenRouter.get("/allDetail", async (ctx, next) => {
   ctx.body = {
     total
     }
+})
+
+tokenRouter.post("/register", async (ctx, next) => {
+  let { stuN, name, pwd, classes, college, phone } = ctx.request.body
+  let sql2 = `select count(1) as one from admin where stuN = '${stuN}'`
+  let msg;
+  const result2 = await tools.packet(sql2);
+  console.log(result2[0].one);
+  if (result2[0].one == 0) {
+      let sql1=`select id from admin order by id desc limit 1;`
+      const result1 = await tools.packet(sql1);
+      let result;
+      if(result1.length==0){
+        let id=1
+        let sql = `insert into admin values(${id},'${stuN}','${pwd}','${name}','0','${phone}','${classes}','${college}','2') `
+        result = await tools.packet(sql);
+      }else{
+        let id=result1[0].id+1
+        let sql = `insert into admin values(${id},'${stuN}','${pwd}','${name}','0','${phone}','${classes}','${college}','2') `
+        result = await tools.packet(sql);
+      }
+      msg="注册成功"
+  }
+  else {
+    msg="账号重复"
+  }
+  ctx.body = {
+    msg
+  }
 })
 
 module.exports=tokenRouter
