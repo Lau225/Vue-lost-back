@@ -228,7 +228,7 @@ tokenRouter.post("/updatefile", async (ctx, next) => {
 //获取已发布物品
 tokenRouter.post("/getpublished", async (ctx, next) => {
   let stuN=ctx.request.body.stuN
-  let sql = `select * from lostthings where number='${stuN}' and status='待招领'`
+  let sql = `select * from lostthings where number='${stuN}'`
   const result = await tools.packet(sql);
   ctx.body= {
         result
@@ -265,11 +265,21 @@ tokenRouter.post("/updatepublished", async (ctx, next) => {
 //删除已发布物品
 tokenRouter.post("/deletepublished", async (ctx, next) => {
   let name=ctx.request.body.name
-  let time=ctx.request.body.time
-  let sql = `DELETE FROM lostthings where name='${name}' and date='${time}'`
-  const result = await tools.packet(sql);
+  let time = ctx.request.body.time
+  let result
+  let msg
+  let sql1 = `select status from lostthings where name='${name}' and date='${time}'`
+  const result1 = await tools.packet(sql1);
+  if (result1[0].status === "确认") {
+    msg="已招领不能进行操作"
+  }
+  else {
+    let sql = `DELETE FROM lostthings where name='${name}' and date='${time}'`
+    result = await tools.packet(sql);
+    msg="可以进行删除"
+  }
   ctx.body= {
-        result
+        msg
     }
 })
 
@@ -356,7 +366,7 @@ tokenRouter.post('/acceptClaim',async (ctx,next)=>{
   let thingName=ctx.request.body.thingName
   let sql=`update lostthings set status='确认' where  name='${thingName}'`
   const result = await tools.packet(sql);
-  let sql1=`update  claimthings set status='确认' where thingName='${thingName}'`
+  let sql1=`update  claimthings set status='确认' where thingName='${thingName}' and status='待招领'`
   const result1 = await tools.packet(sql1);
   let sql2=`select address from lostthings where name='${thingName}'`
   const result2 = await tools.packet(sql2);
@@ -406,7 +416,7 @@ tokenRouter.post("/getPower", async (ctx, next) => {
 
 //统计发布者和招领者的资料
 tokenRouter.get('/getPublisher',async(ctx,next)=>{
-  let sql=`SELECT picker,count(*) as publish from lostthings where date like '%2023-03%' GROUP BY picker`
+  let sql=`SELECT picker,count(*) as publish from lostthings  GROUP BY picker`
   const publish = await tools.packet(sql)
   console.log(publish);
   let claim=[]
@@ -467,24 +477,14 @@ tokenRouter.post("/getreply", async (ctx, next) => {
 
 // 获取物品全部细节
 tokenRouter.get("/allDetail", async (ctx, next) => {
-  let sql = `SELECT * FROM lostthings`;
-  const result = await tools.packet(sql);
-  let total = [];
-  for (const key in result) {
-    let thingName = result[key].name;
-    let obj={}
-    obj.name = thingName;
-    // 每一个物品被招领了多少次
-    let sql1 = `select count(1) as one from claimthings where thingName = '${thingName}' `
-    let result1 = await tools.packet(sql1);
-    obj.claimTimes = result1[0].one;
-    let sql2 = `select count(1) as one from claimthings where thingName = '${thingName}' and status='不同意'`
-    let result2 = await tools.packet(sql2);
-    obj.rejectTimes = result2[0].one;
-    total.push(obj)
-  }
+  // 招领的次数
+  let sql = `select thingName,count(1) as zhaolingcishu from claimthings GROUP BY thingName`;
+  const total = await tools.packet(sql);
+  let sql1 = `select thingName,count(1) as disagree from claimthings where status="不同意" GROUP BY thingName `
+  const disagree = await tools.packet(sql1);
+  
   ctx.body = {
-    total
+    total,disagree
     }
 })
 
