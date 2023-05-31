@@ -382,6 +382,8 @@ tokenRouter.post('/acceptClaim',async (ctx,next)=>{
     let address=result2[0].address
     let sql3=`DELETE FROM comments where address='${address}'`
     const result3 = await tools.packet(sql3);  
+    let sql4 = `DELETE FROM lostthings_user where name='${thingName}' and number='${stuN}'`
+    const result4 = await tools.packet(sql4);
     msg = '同意招领'
   }
   else {
@@ -398,6 +400,10 @@ tokenRouter.post('/disagree',async (ctx,next)=>{
   console.log(thingName,stuN);
   let sql1=`update  claimthings set status='不同意' where thingName='${thingName}' and status='待招领' and claimerNumber='${stuN}'`
   const result1 = await tools.packet(sql1);
+  let sql=`update lostthings set status='待招领' where  name='${thingName}'`
+  const result = await tools.packet(sql);
+  let sql2 = `DELETE FROM lostthings_user where name='${thingName}' and number='${stuN}'`
+  const result2 = await tools.packet(sql2);
   ctx.body={
     result1
   }
@@ -405,8 +411,8 @@ tokenRouter.post('/disagree',async (ctx,next)=>{
 
 //获取招领列表
 tokenRouter.get('/getAllClaimthings',async(ctx,next)=>{
-  let sql=`select count(*) as sure from lostthings where status='确认' and date like '%2023-%'`
-  let sql1=`select count(*) as unsure from lostthings where status='待招领' and date like '%2023-%'`
+  let sql=`select count(*) as sure from lostthings where status='确认'`
+  let sql1=`select count(*) as unsure from lostthings where status='待招领'`
   const result=await tools.packet(sql)
   const result1=await tools.packet(sql1)
   ctx.body={
@@ -529,6 +535,93 @@ tokenRouter.post("/register", async (ctx, next) => {
   }
   ctx.body = {
     msg
+  }
+})
+
+
+// 获取所有用户的信息
+tokenRouter.get("/getAllAdmin", async (ctx, next) => {
+  // 招领的次数
+  let sql = `select * from admin`;
+  const total = await tools.packet(sql);
+  let list = total
+  for (const key in list) {
+    if (list[key].role == "1") {
+      list[key].role = "超级管理员"
+    } else if (list[key].role == "3") {
+      list[key].role = "管理员"
+    }else if (list[key].role == "2") {
+      list[key].role = "普通用户"
+    }
+  }
+  console.log(list);
+  ctx.body = {
+    list
+  }
+})
+
+
+// 用户授权
+tokenRouter.post("/emPower", async (ctx, next) => {
+  let { stuN, role } = ctx.request.body
+  if (role == "管理员") {
+    let sql = `update admin set role = 1 where stuN = '${stuN}'`
+    const result1 = await tools.packet(sql);
+  } else if (role == "普通用户") {
+    let sql1 = `update admin set role = 3 where stuN=${stuN}`;
+    const result2 = await tools.packet(sql1);
+  }
+  ctx.body = {
+    msg:'授权完成'
+  }
+})
+
+// 用户撤权
+tokenRouter.post("/downPower", async (ctx, next) => {
+  let { stuN } = ctx.request.body
+  let sql = `update admin set role = 2 where stuN = '${stuN}'`
+  const result1 = await tools.packet(sql);
+  ctx.body = {
+    msg:'撤权完成'
+  }
+})
+
+// 招领信息
+tokenRouter.post('/zhaoling', async (ctx, next) => {
+  let status="招领中"
+  let number = ctx.request.body.number
+  let name= ctx.request.body.name
+  let detail= ctx.request.body.detail
+  let sql1=`select id from lostthings_user order by id desc limit 1;`
+  const result1 = await tools.packet(sql1);
+  let result
+  if(result1.length==0){
+    let id=1
+    let sql = `insert into lostthings_user values(${id},'${name}','${detail}','${number}','${status}','${fileName}') `
+    result = await tools.packet(sql);
+  }else{
+    let id=result1[0].id+1
+    let sql = `insert into lostthings_user values(${id},'${name}','${detail}','${number}','${status}','${fileName}') `
+    result = await tools.packet(sql);
+  }
+  if (result != null) {
+    ctx.body = {
+    msg:'添加成功'
+  }
+  }
+})
+
+// 对比招领信息 
+tokenRouter.post("/searchMine", async (ctx, next) => {
+  let { number,thingName } = ctx.request.body
+  let sql = `select * from lostthings where name = '${thingName}'`
+  const result = await tools.packet(sql);
+  let old = result[0];
+  let sql1 = `select * from lostthings_user where name = '${thingName}' and number = '${number}'`
+  const result1 = await tools.packet(sql1);
+  let New = result1[0];
+  ctx.body = {
+    old,New
   }
 })
 
