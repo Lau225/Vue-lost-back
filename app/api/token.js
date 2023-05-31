@@ -109,7 +109,7 @@ tokenRouter.post('/getName', async (ctx, next) => {
 
 //获取物品
 tokenRouter.get("/getthing", async (ctx) => {
-  let sql1 = `select * from lostthings where status='待招领'`;
+  let sql1 = `select * from lostthings where status='待招领' or status='招领中'`;
   const lostthings = await tools.packet(sql1);
   console.log(lostthings);
   let addressList=[]
@@ -262,7 +262,7 @@ tokenRouter.post("/updatepublished", async (ctx, next) => {
   }
 })
 
-//删除已发布物品
+//删除已发布物品d
 tokenRouter.post("/deletepublished", async (ctx, next) => {
   let name=ctx.request.body.name
   let time = ctx.request.body.time
@@ -270,13 +270,14 @@ tokenRouter.post("/deletepublished", async (ctx, next) => {
   let msg
   let sql1 = `select status from lostthings where name='${name}' and date='${time}'`
   const result1 = await tools.packet(sql1);
-  if (result1[0].status === "确认") {
-    msg="已招领不能进行操作"
+  console.log(result1[0]);
+  if (result1[0].status === "确认" || result1[0].status ==="招领中") {
+    msg="已招领或招领中不能进行操作"
   }
   else {
     let sql = `DELETE FROM lostthings where name='${name}' and date='${time}'`
     result = await tools.packet(sql);
-    msg="可以进行删除"
+    msg="可以操作"
   }
   ctx.body= {
         msg
@@ -318,14 +319,18 @@ tokenRouter.post("/sendClaim", async (ctx, next) => {
     const result1 = await tools.packet(sql1);
     if(result1.length==0){
       let id=1
-      let sql2=`insert into claimthings values(${id},'${thingName}','${claimerName}','${stuN}','待招领') `
+      let sql2 = `insert into claimthings values(${id},'${thingName}','${claimerName}','${stuN}','待招领') `
+      let sql3 = `update lostthings set status='招领中' where  name='${thingName}'`
+      const result3 = await tools.packet(sql3);
       const result2 = await tools.packet(sql2);
       ctx.body= {
         msg:"招领成功"
     }
     }else{
       let id=result1[0].id+1
-      let sql2=`insert into claimthings values(${id},'${thingName}','${claimerName}','${stuN}','待招领') `
+      let sql2 = `insert into claimthings values(${id},'${thingName}','${claimerName}','${stuN}','待招领') `
+      let sql3 = `update lostthings set status='招领中' where  name='${thingName}'`
+      const result3 = await tools.packet(sql3);
       const result2 = await tools.packet(sql2);
       ctx.body= {
         msg:"招领成功"
@@ -363,25 +368,35 @@ tokenRouter.get('/getAllClaim',async (ctx,next)=>{
 
 //同意招领
 tokenRouter.post('/acceptClaim',async (ctx,next)=>{
-  let thingName=ctx.request.body.thingName
-  let sql=`update lostthings set status='确认' where  name='${thingName}'`
-  const result = await tools.packet(sql);
-  let sql1=`update  claimthings set status='确认' where thingName='${thingName}' and status='待招领'`
-  const result1 = await tools.packet(sql1);
-  let sql2=`select address from lostthings where name='${thingName}'`
-  const result2 = await tools.packet(sql2);
-  let address=result2[0].address
-  let sql3=`DELETE FROM comments where address='${address}'`
-  const result3 = await tools.packet(sql3);
+  let { thingName, stuN } = ctx.request.body
+  let msg
+  let sql4 = `SELECT count(1) as count FROM claimthings where thingName='${thingName}' and status='确认'`
+  const result4 = await tools.packet(sql4);
+  if (result4[0].count != 1) {
+    let sql=`update lostthings set status='确认' where  name='${thingName}'`
+    const result = await tools.packet(sql);
+    let sql1=`update  claimthings set status='确认' where thingName='${thingName}' and status='待招领' and claimerNumber='${stuN}'`
+    const result1 = await tools.packet(sql1);
+    let sql2=`select address from lostthings where name='${thingName}'`
+    const result2 = await tools.packet(sql2);
+    let address=result2[0].address
+    let sql3=`DELETE FROM comments where address='${address}'`
+    const result3 = await tools.packet(sql3);  
+    msg = '同意招领'
+  }
+  else {
+    msg= '不能重复招领'
+  }
   ctx.body={
-    result1
+    msg
   }
 })
 
 // 不同意招领
 tokenRouter.post('/disagree',async (ctx,next)=>{
-  let thingName=ctx.request.body.thingName
-  let sql1=`update  claimthings set status='不同意' where thingName='${thingName}'`
+  let { thingName, stuN } = ctx.request.body
+  console.log(thingName,stuN);
+  let sql1=`update  claimthings set status='不同意' where thingName='${thingName}' and status='待招领' and claimerNumber='${stuN}'`
   const result1 = await tools.packet(sql1);
   ctx.body={
     result1
