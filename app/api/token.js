@@ -625,4 +625,36 @@ tokenRouter.post("/searchMine", async (ctx, next) => {
   }
 })
 
+// 获取名字和权限
+tokenRouter.post("/abab", async (ctx, next) => {
+  let { stuN } = ctx.request.body
+  let sql = `select name,role from admin where stuN = '${stuN}'`
+  const result = await tools.packet(sql);
+  ctx.body = {
+    result
+  }
+})
+
+// 删除回复 delReply
+tokenRouter.post("/delReply", async (ctx, next) => {
+  let { value, thingname, name } = ctx.request.body.obj
+  console.log(value,thingname,name);
+  let sql = `DELETE FROM replycomments where thingname='${thingname}' and value='${value}' and name='${name}'`
+  let result = await tools.packet(sql);
+  ctx.body = {
+    msg:"删除回复成功"
+  }
+})
+
+// 删除评论 delComment
+tokenRouter.post("/delComment", async (ctx, next) => {
+  let { comment,pickerName } = ctx.request.body.obj
+  let sql = `DELETE FROM comments where pickerName='${pickerName}' and comment='${comment}'`
+  let result = await tools.packet(sql);
+  let sql1 = `DELETE FROM replycomments where comment='${comment}' and pickerName='${pickerName}'`
+  let result1 = await tools.packet(sql1);
+  ctx.body = {
+    msg:"删除评论成功"
+  }
+})
 module.exports=tokenRouter
