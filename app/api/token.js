@@ -18,7 +18,8 @@ const tokenRouter=new Router({
     // prefix:'token'
 })
 let fileName=""
-const uploadDir = path.join("D:\\hr-font-master\\public","static") 
+// const uploadDir = path.join("D:\\hr-font-master\\public","static") 
+const uploadDir = path.join("C:\\Users\\lenovo\\Desktop\\Vue-lost-font-master\\public","static") 
 let storage = multer.diskStorage({
   //文件保存路径
   destination: function (req, file, cb) {
@@ -27,7 +28,7 @@ let storage = multer.diskStorage({
   //修改文件名称
   filename: function (req, file, cb) {
       fileName=file.originalname
-      cb(null,file.originalname);
+      cb(null,Date.now() + '-' +file.originalname);
   }
 })
 
@@ -316,7 +317,8 @@ tokenRouter.post("/sendClaim", async (ctx, next) => {
   let thingName=ctx.request.body.thingName
   let sql3=`select * from claimthings where claimerNumber='${stuN}' and thingName='${thingName} ' and status='待招领'`
   const result3 = await tools.packet(sql3);
-  console.log(result3);
+  console.log(stuN,thingName);
+  console.log("result",result3.length);
   if(result3.length==0){
     let sql = `SELECT name from admin where stuN='${stuN}' `;
     const result = await tools.packet(sql);
