@@ -27,8 +27,10 @@ let storage = multer.diskStorage({
   },
   //修改文件名称
   filename: function (req, file, cb) {
-      fileName=file.originalname
-      cb(null,Date.now() + '-' +file.originalname);
+    fileName = file.originalname
+    let aaa = Date.now() + '-' + file.originalname;
+    fileName = aaa;
+    cb(null,aaa);
   }
 })
 
@@ -366,11 +368,15 @@ tokenRouter.post("/getClaim", async (ctx, next) => {
 })
 
 //获取全部认领信息
-tokenRouter.get('/getAllClaim',async (ctx,next)=>{
-  let sql=`select * from claimthings where status='待招领'`
-  const result = await tools.packet(sql);
-  ctx.body={
-    result
+tokenRouter.post('/getAllClaim', async (ctx, next) => {
+  let role = ctx.request.body.role
+  console.log(role);
+  if (role == 1 || role == 3) {
+    let sql=`select * from claimthings where status='待招领'`
+    const result = await tools.packet(sql);
+    ctx.body={
+      result
+    }
   }
 })
 
@@ -420,14 +426,17 @@ tokenRouter.post('/disagree',async (ctx,next)=>{
 })
 
 //获取招领列表
-tokenRouter.get('/getAllClaimthings',async(ctx,next)=>{
-  let sql=`select count(*) as sure from lostthings where status='确认'`
-  let sql1=`select count(*) as unsure from lostthings where status='待招领'`
-  const result=await tools.packet(sql)
-  const result1=await tools.packet(sql1)
-  ctx.body={
-    result,
-    result1
+tokenRouter.post('/getAllClaimthings', async (ctx, next) => {
+  let { role } = ctx.request.body
+  if (role == 1 || role == 3) {
+    let sql=`select count(*) as sure from lostthings where status='确认'`
+    let sql1=`select count(*) as unsure from lostthings where status='待招领'`
+    const result=await tools.packet(sql)
+    const result1=await tools.packet(sql1)
+    ctx.body={
+      result,
+      result1
+    }
   }
 })
 
@@ -446,23 +455,27 @@ tokenRouter.post("/getPower", async (ctx, next) => {
 })
 
 //统计发布者和招领者的资料
-tokenRouter.get('/getPublisher',async(ctx,next)=>{
-  let sql=`SELECT picker,count(*) as publish from lostthings  GROUP BY picker`
-  const publish = await tools.packet(sql)
-  console.log(publish);
-  let claim=[]
-  for (const key in publish) {
-    let pickerName=publish[key].picker
-    let sql1=`select claimerName,count(*) as claim from claimthings where status='确认' and claimerName='${pickerName}'`
-    const result1=await tools.packet(sql1)
-    result1[0].claimerName=pickerName
-    claim.push(result1[0])
+tokenRouter.post('/getPublisher', async (ctx, next) => {
+  let { role } = ctx.request.body
+  if (role == 1 || role == 3) {
+     let sql=`SELECT picker,count(*) as publish from lostthings  GROUP BY picker`
+    const publish = await tools.packet(sql)
+    console.log(publish);
+    let claim=[]
+    for (const key in publish) {
+      let pickerName=publish[key].picker
+      let sql1=`select claimerName,count(*) as claim from claimthings where status='确认' and claimerName='${pickerName}'`
+      const result1=await tools.packet(sql1)
+      result1[0].claimerName=pickerName
+      claim.push(result1[0])
+    }
+    console.log(claim);
+    ctx.body={
+      publish,
+      claim
+    }
   }
-  console.log(claim);
-  ctx.body={
-    publish,
-    claim
-  }
+ 
 })
 
 //回复内容
@@ -507,16 +520,20 @@ tokenRouter.post("/getreply", async (ctx, next) => {
 })
 
 // 获取物品全部细节
-tokenRouter.get("/allDetail", async (ctx, next) => {
+tokenRouter.post("/allDetail", async (ctx, next) => {
+  let { role } = ctx.request.body
+  if (role == 1 || role == 3) {
   // 招领的次数
-  let sql = `select thingName,count(1) as zhaolingcishu from claimthings GROUP BY thingName`;
-  const total = await tools.packet(sql);
-  let sql1 = `select thingName,count(1) as disagree from claimthings where status="不同意" GROUP BY thingName `
-  const disagree = await tools.packet(sql1);
+    let sql = `select thingName,count(1) as zhaolingcishu from claimthings GROUP BY thingName`;
+    const total = await tools.packet(sql);
+    let sql1 = `select thingName,count(1) as disagree from claimthings where status="不同意" GROUP BY thingName `
+    const disagree = await tools.packet(sql1);
+    
+    ctx.body = {
+      total,disagree
+    }  
+  }
   
-  ctx.body = {
-    total,disagree
-    }
 })
 
 tokenRouter.post("/register", async (ctx, next) => {
@@ -553,23 +570,26 @@ tokenRouter.post("/register", async (ctx, next) => {
 
 
 // 获取所有用户的信息
-tokenRouter.get("/getAllAdmin", async (ctx, next) => {
+tokenRouter.post("/getAllAdmin", async (ctx, next) => {
   // 招领的次数
   let sql = `select * from admin`;
-  const total = await tools.packet(sql);
-  let list = total
-  for (const key in list) {
-    if (list[key].role == "1") {
-      list[key].role = "超级管理员"
-    } else if (list[key].role == "3") {
-      list[key].role = "管理员"
-    }else if (list[key].role == "2") {
-      list[key].role = "普通用户"
+  let role = ctx.request.body.role
+  if (role == 1) {
+   const total = await tools.packet(sql);
+    let list = total
+    for (const key in list) {
+      if (list[key].role == "1") {
+        list[key].role = "超级管理员"
+      } else if (list[key].role == "3") {
+        list[key].role = "管理员"
+      }else if (list[key].role == "2") {
+        list[key].role = "普通用户"
+      }
     }
-  }
-  console.log(list);
-  ctx.body = {
-    list
+    console.log(list);
+    ctx.body = {
+      list
+    } 
   }
 })
 
@@ -764,29 +784,32 @@ tokenRouter.post("/yanzheng", async (ctx, next) => {
 
 // 添加代找物品
 tokenRouter.post('/daizhao', async (ctx, next) => {
-  let status="待招领"
+  let status = "待招领"
+  let role = ctx.request.body.role
   let name= ctx.request.body.name
   let daizhaoName= ctx.request.body.daizhaoName
   let type= ctx.request.body.type
   let detail= ctx.request.body.detail
   let place=ctx.request.body.place
-  let date=ctx.request.body.date
-  let sql1=`select id from daizhao order by id desc limit 1;`
-  const result1 = await tools.packet(sql1);
-  let result
-  if(result1.length==0){
-    let id=1
-    let sql = `insert into daizhao values(${id},'${name}','${type}','${detail}','${fileName}','${place}','${date}','${status}','${daizhaoName}') `
-    result = await tools.packet(sql);
-  }else{
-    let id=result1[0].id+1
-    let sql = `insert into daizhao values(${id},'${name}','${type}','${detail}','${fileName}','${place}','${date}','${status}','${daizhaoName}') `
-    result = await tools.packet(sql);
-  }
-  if (result != null) {
-    ctx.body = {
-    msg:'代找信息添加成功'
-  }
+  let date = ctx.request.body.date
+  if (role == 1 || role == 3) {
+        let sql1=`select id from daizhao order by id desc limit 1;`
+      const result1 = await tools.packet(sql1);
+      let result
+      if(result1.length==0){
+        let id=1
+        let sql = `insert into daizhao values(${id},'${name}','${type}','${detail}','${fileName}','${place}','${date}','${status}','${daizhaoName}') `
+        result = await tools.packet(sql);
+      }else{
+        let id=result1[0].id+1
+        let sql = `insert into daizhao values(${id},'${name}','${type}','${detail}','${fileName}','${place}','${date}','${status}','${daizhaoName}') `
+        result = await tools.packet(sql);
+      }
+      if (result != null) {
+        ctx.body = {
+        msg:'代找信息添加成功'
+      }
+      }
   }
 })
 
@@ -801,13 +824,16 @@ tokenRouter.get("/getdaizhao", async (ctx, next) => {
 })
 
 // 获取全部列表 
-tokenRouter.get("/getAllThings", async (ctx, next) => {
+tokenRouter.post("/getAllThings", async (ctx, next) => {
   let sql = `select * from daizhao`
-  let result = await tools.packet(sql);
-  let sql1 = `select * from lostthings where status !='确认' and status !='已下架'`
-  let result1 = await tools.packet(sql1);
-  ctx.body = {
-   result,result1
+  let role = ctx.request.body.role
+  if (role == 1) {
+    let result = await tools.packet(sql);
+    let sql1 = `select * from lostthings where status !='确认' and status !='已下架'`
+    let result1 = await tools.packet(sql1);
+    ctx.body = {
+    result,result1
+    } 
   }
 })
 
