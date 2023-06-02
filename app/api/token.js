@@ -733,9 +733,9 @@ tokenRouter.post("/changePwd", async (ctx, next) => {
     let sql2 = `update admin set password = '${newPWD}' where stuN = '${stuN}'`
     let result2 = await tools.packet(sql2);
     msg="修改密码成功"
-  ctx.body = {
-   msg
-  }
+    ctx.body = {
+      msg
+    }
 })
 
 
@@ -760,4 +760,52 @@ tokenRouter.post("/yanzheng", async (ctx, next) => {
 })
 
 
+// 添加代找物品
+tokenRouter.post('/daizhao', async (ctx, next) => {
+  let status="待招领"
+  let name= ctx.request.body.name
+  let daizhaoName= ctx.request.body.daizhaoName
+  let type= ctx.request.body.type
+  let detail= ctx.request.body.detail
+  let place=ctx.request.body.place
+  let date=ctx.request.body.date
+  let sql1=`select id from daizhao order by id desc limit 1;`
+  const result1 = await tools.packet(sql1);
+  let result
+  if(result1.length==0){
+    let id=1
+    let sql = `insert into daizhao values(${id},'${name}','${type}','${detail}','${fileName}','${place}','${date}','${status}','${daizhaoName}') `
+    result = await tools.packet(sql);
+  }else{
+    let id=result1[0].id+1
+    let sql = `insert into daizhao values(${id},'${name}','${type}','${detail}','${fileName}','${place}','${date}','${status}','${daizhaoName}') `
+    result = await tools.packet(sql);
+  }
+  if (result != null) {
+    ctx.body = {
+    msg:'代找信息添加成功'
+  }
+  }
+})
+
+
+// 获取代找信息
+tokenRouter.get("/getdaizhao", async (ctx, next) => {
+  let sql = `select * from daizhao`
+  let result = await tools.packet(sql);
+  ctx.body = {
+   result
+  }
+})
+
+// 获取全部列表 
+tokenRouter.get("/getAllThings", async (ctx, next) => {
+  let sql = `select * from daizhao`
+  let result = await tools.packet(sql);
+  let sql1 = `select * from lostthings `
+  let result1 = await tools.packet(sql1);
+  ctx.body = {
+   result,result1
+  }
+})
 module.exports=tokenRouter
