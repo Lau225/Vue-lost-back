@@ -11,6 +11,8 @@ const {generateToken}=require('../api/core/utils')
 const auth=require('../api/middlewares/auth')
 const tools=require('../api/config/for')
 const res = require('express/lib/response')
+const crypto = require("crypto")
+const miyao = "paomiange666#";
 const { log } = require('console')
 const tokenRouter=new Router({
     // prefix:'token'
@@ -46,11 +48,16 @@ tokenRouter.post('/file', upload.array('file'), async (ctx,next) => {
 //登陆接口
 tokenRouter.post("/login", async (ctx, next) => {
   let {stuN, password}=ctx.request.body
-  console.log(stuN,password);
-    let sql1 = `select * from admin where stuN='${stuN}' and password='${password}'`;
+  const str = `password=${password}$key=${miyao}`;
+  let md5 = crypto.createHash("md5");
+  let pwd = md5.update(str).digest("hex")
+  console.log(pwd);
+  let sql1 = `select * from admin where stuN='${stuN}' and password='${pwd}'`;
   const res1 = await tools.packet(sql1); 
+  console.log(res1);
   let isverify=res1[0].isverify
-    const token=verifyUser(stuN,password,res1)
+  const token = verifyUser(stuN, pwd, res1)
+  console.log(token);
     if(!token){
         ctx.body={
             errCode:1001,
@@ -212,10 +219,9 @@ tokenRouter.post("/getadmin", async (ctx, next) => {
 
 //修改个人档案
 tokenRouter.post("/updatefile", async (ctx, next) => {
-  let stuN=ctx.request.body.stuN
   let phone=ctx.request.body.phone
-  let password=ctx.request.body.password
-  let sql = `update admin set phone='${phone}',password='${password}' where stuN=${stuN}`
+  let stuN=ctx.request.body.stuN
+  let sql = `update admin set phone='${phone}' where stuN='${stuN}'`
   const result = await tools.packet(sql);
   if(result!=null){
     ctx.body= {
@@ -384,6 +390,8 @@ tokenRouter.post('/acceptClaim',async (ctx,next)=>{
     const result3 = await tools.packet(sql3);  
     let sql4 = `DELETE FROM lostthings_user where name='${thingName}' and number='${stuN}'`
     const result4 = await tools.packet(sql4);
+    let sql5 = `delete from stars where name='${thingName}' and number = '${stuN}'`
+    const result5 = await tools.packet(sql5);
     msg = '同意招领'
   }
   else {
@@ -512,6 +520,9 @@ tokenRouter.get("/allDetail", async (ctx, next) => {
 tokenRouter.post("/register", async (ctx, next) => {
   let { stuN, name, pwd, classes, college, phone } = ctx.request.body
   let sql2 = `select count(1) as one from admin where stuN = '${stuN}'`
+  const str = `password=${pwd}$key=${miyao}`;
+  let md5 = crypto.createHash("md5");
+  let PWD = md5.update(str).digest("hex")
   let msg;
   const result2 = await tools.packet(sql2);
   console.log(result2[0].one);
@@ -521,11 +532,11 @@ tokenRouter.post("/register", async (ctx, next) => {
       let result;
       if(result1.length==0){
         let id=1
-        let sql = `insert into admin values(${id},'${stuN}','${pwd}','${name}','0','${phone}','${classes}','${college}','2') `
+        let sql = `insert into admin values(${id},'${stuN}','${PWD}','${name}','0','${phone}','${classes}','${college}','2') `
         result = await tools.packet(sql);
       }else{
         let id=result1[0].id+1
-        let sql = `insert into admin values(${id},'${stuN}','${pwd}','${name}','0','${phone}','${classes}','${college}','2') `
+        let sql = `insert into admin values(${id},'${stuN}','${PWD}','${name}','0','${phone}','${classes}','${college}','2') `
         result = await tools.packet(sql);
       }
       msg="注册成功"
@@ -657,4 +668,96 @@ tokenRouter.post("/delComment", async (ctx, next) => {
     msg:"删除评论成功"
   }
 })
+
+// 收藏物品
+tokenRouter.post("/stars", async (ctx, next) => {
+  let { address, date, detail, name, picker, place, status, type ,number} = ctx.request.body.obj
+  let {stuN} = ctx.request.body
+  let sql1=`select id from stars order by id desc limit 1;`
+  const result1 = await tools.packet(sql1);
+  let result
+  if(result1.length==0){
+    let id=1
+    let sql = `insert into stars values(${id},'${name}','${type}','${stuN}','${detail}','${address}','${place}','${date}','${picker}','${status}','${number}')`
+    result = await tools.packet(sql);
+  }else{
+    let id=result1[0].id+1
+    let sql = `insert into stars values(${id},'${name}','${type}','${stuN}','${detail}','${address}','${place}','${date}','${picker}','${status}','${number}')`
+    result = await tools.packet(sql);
+  }
+  ctx.body = {
+    msg:"收藏成功"
+  }
+})
+
+//获取收藏的物品
+tokenRouter.post("/getstars", async (ctx, next) => {
+  let { stuN } = ctx.request.body
+  let sql1=`select * from stars where number = '${stuN}' and (status = '待招领' or status = '招领中')`
+  const result1 = await tools.packet(sql1);
+  ctx.body = {
+    result1
+  }
+})
+
+// 显示收藏的物品
+tokenRouter.post("/showList", async (ctx, next) => {
+  let { stuN } = ctx.request.body
+  let sql1=`select * from lostthings where status = '待招领' or status = '招领中'`
+  const lostthings = await tools.packet(sql1);
+  let sql2 = `select * from stars where number='${stuN}'`
+  const stars = await tools.packet(sql2);
+  ctx.body = {
+   lostthings,stars
+  }
+})
+
+// 取消收藏 
+tokenRouter.post("/unstars", async (ctx, next) => {
+  let {name } = ctx.request.body.obj
+  let {stuN } = ctx.request.body
+  let sql1=`DELETE FROM stars where name='${name}' and number='${stuN}'`
+  const lostthings = await tools.packet(sql1);
+  ctx.body = {
+   msg:"取消收藏成功"
+  }
+})
+
+
+// 修改密码
+tokenRouter.post("/changePwd", async (ctx, next) => {
+  let { stuN, newpwd } = ctx.request.body
+    const str = `password=${newpwd}$key=${miyao}`;
+    let md5 = crypto.createHash("md5");
+    let newPWD = md5.update(str).digest("hex")
+    let sql2 = `update admin set password = '${newPWD}' where stuN = '${stuN}'`
+    let result2 = await tools.packet(sql2);
+    msg="修改密码成功"
+  ctx.body = {
+   msg
+  }
+})
+
+
+// 验证旧密码 yanzheng
+tokenRouter.post("/yanzheng", async (ctx, next) => {
+  let { oldpwd, stuN } = ctx.request.body
+  let msg;
+  const str = `password=${oldpwd}$key=${miyao}`;
+  let md5 = crypto.createHash("md5");
+  let oldPWD = md5.update(str).digest("hex")
+  let sql1=`select * from admin where stuN='${stuN}' and password = '${oldPWD}'`
+  const result1 = await tools.packet(sql1);
+  if (result1.length == 0) {
+    msg="旧密码错误"
+  }
+  else if (result1.length == 1) {
+    msg="验证成功"
+  }
+  ctx.body = {
+   msg
+  }
+})
+
+
 module.exports=tokenRouter
