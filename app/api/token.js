@@ -802,10 +802,35 @@ tokenRouter.get("/getdaizhao", async (ctx, next) => {
 tokenRouter.get("/getAllThings", async (ctx, next) => {
   let sql = `select * from daizhao`
   let result = await tools.packet(sql);
-  let sql1 = `select * from lostthings `
+  let sql1 = `select * from lostthings where status !='确认' and status !='已下架'`
   let result1 = await tools.packet(sql1);
   ctx.body = {
    result,result1
+  }
+})
+
+// 下架物品
+tokenRouter.post("/Off", async (ctx, next) => {
+  let { address, name, } = ctx.request.body.obj
+  let Do = ctx.request.body.obj.do
+  if (Do == "招领") {
+    let sql = `update lostthings set status='已下架' where address='${address}' and name = '${name}'`
+    let result = await tools.packet(sql);
+    let sql1 = `select * from stars where address='${address}' and name = '${name}'`
+    let result1 = await tools.packet(sql1);
+    if (result1.length != 0) {
+      let sql2 = `DELETE FROM stars where name='${name}' and address='${address}'`
+      let result2 = await tools.packet(sql2);
+    }
+    let sql3 = `update claimthings set status='不同意' where  thingName = '${name}'`
+    let result3 = await tools.packet(sql3);
+  }
+  else if (Do == "代找") {
+   let sql1 = `DELETE FROM daizhao where name='${name}' and address='${address}'`
+   let result1 = await tools.packet(sql1); 
+  }
+  ctx.body = {
+   msg:"操作成功111"
   }
 })
 module.exports=tokenRouter
